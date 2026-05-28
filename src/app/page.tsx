@@ -181,6 +181,10 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
+    if (!model) {
+      setError('请先选择一个模型');
+      return;
+    }
     if (!hasApiKey(model)) {
       setError('请先配置该模型的 API Key');
       setShowSettings(true);
@@ -315,7 +319,7 @@ export default function Home() {
         {/* Main Content - Side by Side Layout */}
         <div className="flex-1 flex gap-6 px-8 pb-8 overflow-hidden">
           {/* Left Panel - Control Panel */}
-          <div ref={leftPanelRef} className="w-[400px] flex-shrink-0 flex flex-col gap-6">
+          <div ref={leftPanelRef} className="w-[400px] flex-shrink-0 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
             {/* Generator Card */}
             <div ref={generatorCardRef} className="relative group" style={{ transformStyle: 'preserve-3d' }}>
               <div className="absolute -inset-2 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
@@ -413,16 +417,76 @@ export default function Home() {
                     type="text"
                     value={theme}
                     onChange={(e) => setTheme(e.target.value)}
-                    placeholder="例如：Locked room, poison..."
-                    className="w-full px-4 py-3 glass-input rounded-xl text-white placeholder-gray-600 text-sm"
+                    placeholder="输入主题或点击下方标签..."
+                    className="w-full px-4 py-3 glass-input rounded-xl text-white placeholder-gray-600 text-sm mb-3"
                   />
+                  {/* Theme Suggestions - Scrollable Grid */}
+                  <div className="max-h-[140px] overflow-y-auto pr-1 custom-scrollbar rounded-xl glass-light p-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { en: 'Locked room mystery', zh: '密室杀人' },
+                        { en: 'Poison', zh: '毒杀' },
+                        { en: 'Alibi contradiction', zh: '不在场证明矛盾' },
+                        { en: 'Revenge', zh: '复仇' },
+                        { en: 'Inheritance dispute', zh: '遗产纠纷' },
+                        { en: 'Art theft', zh: '艺术品盗窃' },
+                        { en: 'Crypto murder', zh: '加密货币谋杀' },
+                        { en: 'Ship mystery', zh: '船舶谜案' },
+                        { en: 'Hotel disappearance', zh: '酒店失踪' },
+                        { en: 'Painting forgery', zh: '画作伪造' },
+                        { en: 'Midnight duel', zh: '午夜决斗' },
+                        { en: 'Spy thriller', zh: '间谍惊悚' },
+                        { en: 'Time capsule', zh: '时间胶囊' },
+                        { en: 'Virtual reality crime', zh: '虚拟现实犯罪' },
+                        { en: 'Space station', zh: '空间站' },
+                        { en: 'Isolated island', zh: '孤岛' },
+                        { en: 'Train murder', zh: '列车谋杀' },
+                        { en: 'Lighthouse keeper', zh: '灯塔守夜人' },
+                        { en: 'Casino heist', zh: '赌场劫案' },
+                        { en: 'Ghost ship', zh: '幽灵船' },
+                        { en: 'Underground tunnel', zh: '地下隧道' },
+                        { en: 'Rooftop chase', zh: '屋顶追逐' },
+                        { en: 'Museum at night', zh: '深夜博物馆' },
+                        { en: 'Opera house', zh: '歌剧院' },
+                        { en: 'Yacht party', zh: '游艇派对' },
+                        { en: 'Ski resort', zh: '滑雪胜地' },
+                        { en: 'Submarine', zh: '潜艇' },
+                        { en: 'Abandoned factory', zh: '废弃工厂' },
+                        { en: 'Old mansion', zh: '古老庄园' },
+                        { en: 'Clock tower', zh: '钟楼' },
+                        { en: 'Mirror maze', zh: '镜迷宫' },
+                        { en: 'Desert oasis', zh: '沙漠绿洲' },
+                        { en: 'Mountain lodge', zh: '山间小屋' },
+                        { en: 'Carnival', zh: '嘉年华' },
+                        { en: 'Jungle expedition', zh: '丛林探险' },
+                        { en: 'Arctic base', zh: '北极基地' },
+                        { en: 'Winery', zh: '葡萄酒庄' },
+                        { en: 'Theater backstage', zh: '剧院后台' },
+                        { en: 'Zoo after dark', zh: '深夜动物园' },
+                        { en: 'University campus', zh: '大学校园' },
+                      ].map((t) => (
+                        <button
+                          key={t.en}
+                          onClick={() => setTheme(t.en)}
+                          className={`text-left px-3 py-2 rounded-lg transition-all duration-300 ${
+                            theme === t.en
+                              ? 'bg-purple-500/30 text-purple-200 border border-purple-500/40'
+                              : 'bg-white/[0.02] text-gray-400 border border-white/[0.04] hover:text-white hover:bg-white/[0.06]'
+                          }`}
+                        >
+                          <div className="text-xs font-medium">{t.en}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">{t.zh}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Generate Button */}
                 <button
                   ref={generateBtnRef as React.RefObject<HTMLButtonElement>}
                   onClick={handleGenerate}
-                  disabled={loading || !mounted || configuredModels.length === 0}
+                  disabled={loading || !mounted}
                   className="relative w-full py-4 btn-primary text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                 >
                   {loading ? (
