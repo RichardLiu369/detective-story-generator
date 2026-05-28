@@ -113,104 +113,126 @@ async function callOpenAICompatible(
 }
 
 export function extractJSONFromResponse(response: string): any {
-  // Try to find JSON in the response
-  const jsonMatch = response.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    let jsonStr = jsonMatch[0];
+  // Step 1: Clean up markdown code blocks first
+  let cleaned = response
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim();
 
-    // Clean up common issues
-    jsonStr = jsonStr
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
+  // Step 2: Find the JSON object boundaries
+  const start = cleaned.indexOf('{');
+  if (start === -1) {
+    throw new Error('No JSON object found in response');
+  }
 
-    // Fix common JSON issues
-    // 1. Fix unescaped newlines within strings
-    jsonStr = jsonStr.replace(/(?<=:\s*"[^"]*)\n(?=[^"]*")/g, '\\n');
-    // 2. Fix unescaped tabs within strings
-    jsonStr = jsonStr.replace(/(?<=:\s*"[^"]*)\t(?=[^"]*")/g, '\\t');
-
-    try {
-      return JSON.parse(jsonStr);
-    } catch (e) {
-      // If parsing fails, try more aggressive cleaning
-      try {
-        // Fix single-quoted property names: 'key': -> "key":
-        let fixedJson = jsonStr.replace(/(?<=[\{,]\s*)'([^']+)'\s*:/g, '"$1":');
-        // Fix single-quoted string values: 'value' -> "value"
-        fixedJson = fixedJson.replace(/:\s*'([^']*)'/g, ': "$1"');
-        // Fix trailing commas before } or ]
-        fixedJson = fixedJson.replace(/,\s*([\]}])/g, '$1');
-        // Fix unescaped control characters
-        fixedJson = fixedJson
-          .replace(/\n/g, '\\n')
-          .replace(/\r/g, '\\r')
-          .replace(/\t/g, '\\t')
-          .replace(/[\x00-\x1f\x7f]/g, (match) => {
-            return '\\u' + match.charCodeAt(0).toString(16).padStart(4, '0');
-          });
-        return JSON.parse(fixedJson);
-      } catch (e2) {
-        // Last resort: try to fix truncated JSON
-        try {
-          // Find the outermost braces
-          const start = jsonStr.indexOf('{');
-          if (start !== -1) {
-            let extracted = jsonStr.substring(start);
-            // Fix single-quoted property names
-            extracted = extracted.replace(/(?<=[\{,]\s*)'([^']+)'\s*:/g, '"$1":');
-            // Fix single-quoted string values
-            extracted = extracted.replace(/:\s*'([^']*)'/g, ': "$1"');
-            // Fix trailing commas
-            extracted = extracted.replace(/,\s*([\]}])/g, '$1');
-            // Fix control characters
-            extracted = extracted.replace(/[\x00-\x1f\x7f]/g, (match) => {
-              if (match === '\n') return '\\n';
-              if (match === '\r') return '\\r';
-              if (match === '\t') return '\\t';
-              return '\\u' + match.charCodeAt(0).toString(16).padStart(4, '0');
-            });
-
-            // Try to fix truncated JSON by closing open brackets
-            const openBraces = (extracted.match(/{/g) || []).length;
-            const closeBraces = (extracted.match(/}/g) || []).length;
-            const openBrackets = (extracted.match(/\[/g) || []).length;
-            const closeBrackets = (extracted.match(/]/g) || []).length;
-
-            // If we have unclosed brackets, try to close them
-            if (openBraces > closeBraces || openBrackets > closeBrackets) {
-              // Remove any incomplete string at the end
-              const lastQuoteIndex = extracted.lastIndexOf('"');
-              const lastBraceIndex = extracted.lastIndexOf('}');
-              const lastBracketIndex = extracted.lastIndexOf(']');
-
-              // If the last quote is after the last closing brace/bracket, we have an incomplete string
-              if (lastQuoteIndex > Math.max(lastBraceIndex, lastBracketIndex)) {
-                // Find the start of this incomplete string
-                const prevQuoteIndex = extracted.lastIndexOf('"', lastQuoteIndex - 1);
-                if (prevQuoteIndex !== -1) {
-                  extracted = extracted.substring(0, prevQuoteIndex);
-                }
-              }
-
-              // Close any unclosed arrays
-              for (let i = 0; i < openBrackets - closeBrackets; i++) {
-                extracted += ']';
-              }
-              // Close any unclosed objects
-              for (let i = 0; i < openBraces - closeBraces; i++) {
-                extracted += '}';
-              }
-
-              return JSON.parse(extracted);
-            }
-          }
-        } catch (e3) {
-          // Give up
-        }
-        throw new Error(`Failed to parse JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
-      }
+  // Find the matching closing brace
+  let braceCount = 0;
+  let end = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    if (cleaned[i] === '{') braceCount++;
+    if (cleaned[i] === '}') braceCount--;
+    if (braceCount === 0) {
+      end = i;
+      break;
     }
   }
-  throw new Error('No valid JSON found in response');
+
+  // If we didn't find a matching brace, the JSON is truncated
+  if (end === -1) {
+    // Try to find the last complete property
+    end = cleaned.length - 1;
+  }
+
+  let jsonStr = cleaned.substring(start, end + 1);
+
+  // Step 3: Fix unescaped characters within string values
+  let result = '';
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i];
+
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      result += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+
+    if (inString) {
+      // Escape special characters within strings
+      switch (char) {
+        case '\n':
+          result += '\\n';
+          break;
+        case '\r':
+          result += '\\r';
+          break;
+        case '\t':
+          result += '\\t';
+          break;
+        default:
+          result += char;
+      }
+    } else {
+      result += char;
+    }
+  }
+
+  jsonStr = result;
+
+  // Step 4: Try to parse
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    // Step 5: If parsing fails, try to fix common issues
+    try {
+      // Remove trailing commas
+      jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+
+      // Fix incomplete strings at the end
+      const lastQuoteIndex = jsonStr.lastIndexOf('"');
+      const lastBraceIndex = jsonStr.lastIndexOf('}');
+      const lastBracketIndex = jsonStr.lastIndexOf(']');
+
+      if (lastQuoteIndex > Math.max(lastBraceIndex, lastBracketIndex)) {
+        // Find the start of this incomplete string
+        const prevQuoteIndex = jsonStr.lastIndexOf('"', lastQuoteIndex - 1);
+        if (prevQuoteIndex !== -1) {
+          jsonStr = jsonStr.substring(0, prevQuoteIndex);
+        }
+      }
+
+      // Count and fix unclosed brackets
+      const openBraces = (jsonStr.match(/{/g) || []).length;
+      const closeBraces = (jsonStr.match(/}/g) || []).length;
+      const openBrackets = (jsonStr.match(/\[/g) || []).length;
+      const closeBrackets = (jsonStr.match(/]/g) || []).length;
+
+      // Close unclosed arrays
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        jsonStr += ']';
+      }
+      // Close unclosed objects
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        jsonStr += '}';
+      }
+
+      return JSON.parse(jsonStr);
+    } catch (e2) {
+      throw new Error(`Failed to parse JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    }
+  }
 }

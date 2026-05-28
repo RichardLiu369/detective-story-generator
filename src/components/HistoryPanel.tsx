@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { Story } from '@/types';
 import StoryDisplay from './StoryDisplay';
 
@@ -20,6 +21,32 @@ interface HistoryPanelProps {
 
 export default function HistoryPanel({ history, onDelete, onClear }: HistoryPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // GSAP stagger animation for history items
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const items = containerRef.current.querySelectorAll('.history-item');
+    if (items.length === 0) return;
+
+    gsap.fromTo(
+      items,
+      {
+        opacity: 0,
+        x: -30,
+        scale: 0.95,
+      },
+      {
+        opacity: 1,
+        x: 0,
+        scale: 1,
+        duration: 0.5,
+        stagger: 0.08,
+        ease: 'back.out(1.5)',
+      }
+    );
+  }, [history]);
 
   if (history.length === 0) {
     return (
@@ -63,12 +90,11 @@ export default function HistoryPanel({ history, onDelete, onClear }: HistoryPane
       </div>
 
       {/* History List */}
-      <div className="space-y-4">
+      <div ref={containerRef} className="space-y-4">
         {history.map((item, index) => (
           <div
             key={item.id}
-            className="glass-card rounded-2xl overflow-hidden animate-spring-slide-up"
-            style={{ animationDelay: `${index * 0.05}s` }}
+            className="glass-card rounded-2xl overflow-hidden history-item"
           >
             {/* Header */}
             <div

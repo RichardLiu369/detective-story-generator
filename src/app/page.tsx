@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import gsap from 'gsap';
 import { Story, StoryConfig, CustomModel } from '@/types';
 import { getSettings, hasApiKey, getApiKey, getModelSettings } from '@/lib/settings';
 import StoryDisplay from '@/components/StoryDisplay';
 import SettingsModal from '@/components/SettingsModal';
 import HistoryPanel, { HistoryItem } from '@/components/HistoryPanel';
+import { useMagneticHover, useCardTilt } from '@/hooks/useGSAP';
 
 const HISTORY_STORAGE_KEY = 'detective-story-history';
 
@@ -73,6 +75,53 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [generatingText, setGeneratingText] = useState('');
   const generateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // GSAP refs
+  const headerRef = useRef<HTMLElement>(null);
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const generateBtnRef = useMagneticHover(0.2);
+  const generatorCardRef = useCardTilt(3);
+
+  // GSAP entrance animations
+  useEffect(() => {
+    if (!mounted) return;
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    // Header entrance
+    if (headerRef.current) {
+      tl.fromTo(
+        headerRef.current,
+        { opacity: 0, y: -30 },
+        { opacity: 1, y: 0, duration: 0.8 }
+      );
+    }
+
+    // Left panel entrance
+    if (leftPanelRef.current) {
+      tl.fromTo(
+        leftPanelRef.current,
+        { opacity: 0, x: -50, scale: 0.95 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: 'back.out(1.5)' },
+        '-=0.4'
+      );
+    }
+
+    // Right panel entrance
+    if (rightPanelRef.current) {
+      tl.fromTo(
+        rightPanelRef.current,
+        { opacity: 0, x: 50, scale: 0.95 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.8, ease: 'back.out(1.5)' },
+        '-=0.6'
+      );
+    }
+
+    return () => {
+      tl.kill();
+    };
+  }, [mounted]);
 
   // Loading text animation
   useEffect(() => {
@@ -211,28 +260,28 @@ export default function Home() {
     <div className="min-h-screen bg-[#0a0a0f] relative overflow-hidden">
       <BackgroundEffects />
 
-      <div className="relative z-10 container mx-auto px-4 py-8 max-w-5xl">
+      <div className="relative z-10 h-screen flex flex-col">
         {/* Header */}
-        <header className="flex items-center justify-between mb-16 animate-spring-slide-down">
+        <header ref={headerRef} className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center gap-4">
             <div className="relative group">
               <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl blur-lg opacity-20 group-hover:opacity-40 transition-opacity duration-500" />
-              <div className="relative w-14 h-14 glass-card rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-500" style={{ transitionTimingFunction: 'var(--spring-bounce)' }}>
-                <svg className="w-7 h-7 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative w-12 h-12 glass-card rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-500" style={{ transitionTimingFunction: 'var(--spring-bounce)' }}>
+                <svg className="w-6 h-6 text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-bold gradient-text">Detective Story Generator</h1>
-              <p className="text-xs text-gray-500 mt-1 tracking-wider uppercase">GTarcade Community Tool</p>
+              <h1 className="text-xl font-bold gradient-text">Detective Story Generator</h1>
+              <p className="text-xs text-gray-500 mt-0.5 tracking-wider uppercase">GTarcade Community Tool</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-xl transition-all duration-400 ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-400 ${
                 showHistory
                   ? 'glass-button text-purple-200'
                   : 'btn-secondary text-gray-300'
@@ -244,7 +293,7 @@ export default function Home() {
               </svg>
               <span className="text-sm font-medium">历史</span>
               {history.length > 0 && (
-                <span className="px-2 py-0.5 text-xs bg-purple-500/30 text-purple-200 rounded-full font-medium animate-spring-pop">
+                <span className="px-1.5 py-0.5 text-xs bg-purple-500/30 text-purple-200 rounded-full font-medium">
                   {history.length}
                 </span>
               )}
@@ -252,7 +301,7 @@ export default function Home() {
 
             <button
               onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2.5 px-5 py-3 btn-secondary text-gray-300 rounded-xl"
+              className="flex items-center gap-2 px-4 py-2.5 btn-secondary text-gray-300 rounded-xl"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -263,187 +312,183 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content */}
-        <div className="max-w-2xl mx-auto">
-          {/* History Panel */}
-          {showHistory && (
-            <div className="mb-10 animate-spring-in">
+        {/* Main Content - Side by Side Layout */}
+        <div className="flex-1 flex gap-6 px-8 pb-8 overflow-hidden">
+          {/* Left Panel - Control Panel */}
+          <div ref={leftPanelRef} className="w-[400px] flex-shrink-0 flex flex-col gap-6">
+            {/* Generator Card */}
+            <div ref={generatorCardRef} className="relative group" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute -inset-2 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+              <div className="relative glass rounded-2xl p-6 overflow-hidden">
+                {/* Inner shimmer */}
+                <div className="absolute inset-0 animate-shimmer pointer-events-none rounded-2xl" />
+
+                {/* Title */}
+                <div className="text-center mb-6 relative">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 glass-light rounded-full mb-4 animate-bounce-subtle">
+                    <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse" />
+                    <span className="text-xs text-purple-300 font-medium tracking-wider">AI POWERED</span>
+                  </div>
+                  <h2 className="text-2xl font-bold gradient-text mb-2">
+                    【谁是凶手】故事生成器
+                  </h2>
+                  <p className="text-gray-400 text-sm">
+                    一键生成中英双语侦探推理故事
+                  </p>
+                </div>
+
+                {/* Model Selection */}
+                <div className="mb-6">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
+                    <div className="w-5 h-5 rounded-md bg-purple-500/20 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    选择模型
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {mounted && customModels.map((m, index) => {
+                      const isConfigured = !!m.apiKey;
+                      const isSelected = model === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setModel(m.id)}
+                          disabled={!isConfigured}
+                          className={`relative flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${
+                            isSelected
+                              ? 'glass-button text-white'
+                              : isConfigured
+                              ? 'glass-light text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                              : 'glass-light text-gray-600 cursor-not-allowed opacity-50'
+                          }`}
+                          style={{ transitionTimingFunction: 'var(--spring-bounce)' }}
+                        >
+                          <div className={`w-9 h-9 flex items-center justify-center rounded-lg ${
+                            isSelected
+                              ? 'bg-gradient-to-br from-purple-500 to-blue-500 shadow-lg shadow-purple-500/30'
+                              : 'bg-gradient-to-br from-gray-600 to-gray-700'
+                          }`}>
+                            <span className="text-sm font-bold text-white">{m.name[0]}</span>
+                          </div>
+                          <span className="text-xs font-medium truncate">{m.name}</span>
+                          {isSelected && (
+                            <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center shadow-lg animate-spring-pop">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          )}
+                          {!isConfigured && (
+                            <div className="absolute top-2 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {mounted && configuredModels.length === 0 && (
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      className="mt-3 w-full py-3 text-sm text-purple-400 hover:text-purple-300 glass-light rounded-xl transition-all duration-300"
+                    >
+                      尚未配置模型，点击配置 →
+                    </button>
+                  )}
+                </div>
+
+                {/* Theme */}
+                <div className="mb-6">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                    <div className="w-5 h-5 rounded-md bg-blue-500/20 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                    </div>
+                    主题偏好
+                    <span className="text-gray-600 text-xs">(可选)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                    placeholder="例如：Locked room, poison..."
+                    className="w-full px-4 py-3 glass-input rounded-xl text-white placeholder-gray-600 text-sm"
+                  />
+                </div>
+
+                {/* Generate Button */}
+                <button
+                  ref={generateBtnRef as React.RefObject<HTMLButtonElement>}
+                  onClick={handleGenerate}
+                  disabled={loading || !mounted || configuredModels.length === 0}
+                  className="relative w-full py-4 btn-primary text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <span className="animate-fade-in text-sm">{generatingText}</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      一键生成故事
+                    </span>
+                  )}
+                </button>
+
+                {/* Error */}
+                {error && (
+                  <div className="mt-4 p-3 glass-card rounded-xl border-red-500/20 animate-spring-slide-down">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-xs text-red-400">{error}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Content Area */}
+          <div ref={rightPanelRef} className="flex-1 overflow-y-auto pr-2">
+            {showHistory ? (
               <HistoryPanel
                 history={history}
                 onDelete={handleDeleteHistory}
                 onClear={handleClearHistory}
               />
-            </div>
-          )}
-
-          {/* Generator Card */}
-          <div className="relative group animate-spring-in">
-            {/* Outer glow */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-            <div className="relative glass rounded-3xl p-10 overflow-hidden">
-              {/* Inner shimmer */}
-              <div className="absolute inset-0 animate-shimmer pointer-events-none rounded-3xl" />
-
-              {/* Top accent line */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
-
-              {/* Title */}
-              <div className="text-center mb-12 relative">
-                <div className="inline-flex items-center gap-2 px-4 py-2 glass-light rounded-full mb-6 animate-bounce-subtle">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />
-                  <span className="text-xs text-purple-300 font-medium tracking-wider">AI POWERED</span>
+            ) : story ? (
+              <StoryDisplay story={story} />
+            ) : (
+              /* Empty State */
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/10 to-blue-500/10 flex items-center justify-center mb-6 animate-bounce-subtle">
+                  <svg className="w-12 h-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
                 </div>
-                <h2 className="text-5xl font-bold gradient-text mb-4 leading-tight">
-                  【谁是凶手】<br />故事生成器
-                </h2>
-                <p className="text-gray-400 text-base max-w-md mx-auto leading-relaxed">
-                  一键生成中英双语侦探推理故事 + AI生图提示词
+                <h3 className="text-xl font-semibold text-gray-300 mb-2">选择模型，开始创作</h3>
+                <p className="text-sm text-gray-500 max-w-sm">
+                  在左侧配置模型和主题偏好，点击生成按钮即可创作侦探推理故事
                 </p>
               </div>
-
-              {/* Model Selection */}
-              <div className="mb-10">
-                <label className="flex items-center gap-2.5 text-sm font-medium text-gray-300 mb-5">
-                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  选择模型
-                </label>
-                <div className="grid grid-cols-3 gap-4">
-                  {mounted && customModels.map((m, index) => {
-                    const isConfigured = !!m.apiKey;
-                    const isSelected = model === m.id;
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => setModel(m.id)}
-                        disabled={!isConfigured}
-                        className={`relative flex flex-col items-center gap-3 p-5 rounded-2xl transition-all duration-400 animate-spring-slide-up stagger-${index + 1} ${
-                          isSelected
-                            ? 'glass-button text-white scale-105'
-                            : isConfigured
-                            ? 'glass-card text-gray-400 hover:text-white'
-                            : 'glass-light text-gray-600 cursor-not-allowed opacity-50'
-                        }`}
-                        style={{ transitionTimingFunction: 'var(--spring-bounce)' }}
-                      >
-                        <div className={`w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-400 ${isSelected ? 'scale-110' : ''}`}>
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white shadow-lg ${
-                            isSelected
-                              ? 'bg-gradient-to-br from-purple-500 to-blue-500 shadow-purple-500/30'
-                              : 'bg-gradient-to-br from-gray-600 to-gray-700'
-                          }`}>
-                            {m.name[0]}
-                          </div>
-                        </div>
-                        <span className="text-sm font-medium">{m.name}</span>
-                        {isSelected && (
-                          <div className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 animate-spring-pop">
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        )}
-                        {!isConfigured && (
-                          <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse" title="未配置" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {mounted && configuredModels.length === 0 && (
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="mt-5 w-full py-4 text-sm text-purple-400 hover:text-purple-300 glass-card rounded-xl transition-all duration-400 hover:scale-[1.02]"
-                    style={{ transitionTimingFunction: 'var(--spring-bounce)' }}
-                  >
-                    尚未配置任何模型，点击这里配置 →
-                  </button>
-                )}
-              </div>
-
-              {/* Theme */}
-              <div className="mb-12">
-                <label className="flex items-center gap-2.5 text-sm font-medium text-gray-300 mb-4">
-                  <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                  </div>
-                  主题偏好
-                  <span className="text-gray-600 text-xs">(可选)</span>
-                </label>
-                <div className="relative group/input">
-                  <input
-                    type="text"
-                    value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
-                    placeholder="例如：密室杀人、毒杀、不在场证明..."
-                    className="w-full px-5 py-4 glass-input rounded-xl text-white placeholder-gray-600"
-                  />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 group-hover/input:text-purple-400 transition-colors duration-300">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Generate Button */}
-              <button
-                onClick={handleGenerate}
-                disabled={loading || !mounted || configuredModels.length === 0}
-                className="relative w-full py-5 btn-primary text-white font-semibold text-lg rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-4">
-                    <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    <span className="animate-fade-in">{generatingText}</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-3">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    一键生成故事
-                  </span>
-                )}
-              </button>
-
-              {/* Error */}
-              {error && (
-                <div className="mt-5 p-4 glass-card rounded-xl border-red-500/20 animate-spring-slide-down">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-red-400">{error}</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </div>
-
-          {/* Current Story Display */}
-          {story && !showHistory && (
-            <div className="mt-10 animate-spring-in">
-              <StoryDisplay story={story} />
-            </div>
-          )}
         </div>
 
         {/* Footer */}
-        <footer className="text-center mt-24 pb-8 animate-spring-slide-up" style={{ animationDelay: '0.5s' }}>
-          <div className="inline-flex items-center gap-3 px-6 py-3 glass-light rounded-full">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+        <footer className="text-center py-4 animate-spring-slide-up" style={{ animationDelay: '0.5s' }}>
+          <div className="inline-flex items-center gap-3 px-5 py-2 glass-light rounded-full">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
             <span className="text-xs text-gray-400">GTarcade Community</span>
             <span className="text-xs text-gray-600">•</span>
             <span className="text-xs text-gray-500">Detective Story Generator</span>
