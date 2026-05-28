@@ -7,7 +7,7 @@ import { getSettings, hasApiKey, getApiKey, getModelSettings } from '@/lib/setti
 import StoryDisplay from '@/components/StoryDisplay';
 import SettingsModal from '@/components/SettingsModal';
 import HistoryPanel, { HistoryItem } from '@/components/HistoryPanel';
-import { useMagneticHover, useCardTilt } from '@/hooks/useGSAP';
+import { useCardTilt } from '@/hooks/useGSAP';
 
 const HISTORY_STORAGE_KEY = 'detective-story-history';
 
@@ -80,7 +80,6 @@ export default function Home() {
   const headerRef = useRef<HTMLElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
-  const generateBtnRef = useMagneticHover(0.2);
   const generatorCardRef = useCardTilt(3);
 
   // GSAP entrance animations
@@ -484,9 +483,8 @@ export default function Home() {
 
                 {/* Generate Button */}
                 <button
-                  ref={generateBtnRef as React.RefObject<HTMLButtonElement>}
                   onClick={handleGenerate}
-                  disabled={loading || !mounted}
+                  disabled={loading}
                   className="relative w-full py-4 btn-primary text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                 >
                   {loading ? (
