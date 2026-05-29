@@ -180,12 +180,11 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
-    if (!model) {
-      setError('请先选择一个模型');
+    if (!model || configuredModels.length === 0) {
+      setShowSettings(true);
       return;
     }
     if (!hasApiKey(model)) {
-      setError('请先配置该模型的 API Key');
       setShowSettings(true);
       return;
     }
