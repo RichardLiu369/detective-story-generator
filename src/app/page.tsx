@@ -180,7 +180,6 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
-    alert('按钮已点击！model=' + model + ', configuredModels=' + configuredModels.length);
     if (!model || configuredModels.length === 0) {
       setShowSettings(true);
       return;
