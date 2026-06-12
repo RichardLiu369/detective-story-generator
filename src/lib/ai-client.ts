@@ -139,7 +139,6 @@ export function extractJSONFromResponse(response: string): any {
 
   // If we didn't find a matching brace, the JSON is truncated
   if (end === -1) {
-    // Try to find the last complete property
     end = cleaned.length - 1;
   }
 
@@ -172,7 +171,6 @@ export function extractJSONFromResponse(response: string): any {
     }
 
     if (inString) {
-      // Escape special characters within strings
       switch (char) {
         case '\n':
           result += '\\n';
@@ -197,7 +195,7 @@ export function extractJSONFromResponse(response: string): any {
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
-    // Step 5: If parsing fails, try to fix common issues
+    // Step 5: Aggressive repair attempts
     try {
       // Remove trailing commas
       jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
@@ -208,31 +206,92 @@ export function extractJSONFromResponse(response: string): any {
       const lastBracketIndex = jsonStr.lastIndexOf(']');
 
       if (lastQuoteIndex > Math.max(lastBraceIndex, lastBracketIndex)) {
-        // Find the start of this incomplete string
         const prevQuoteIndex = jsonStr.lastIndexOf('"', lastQuoteIndex - 1);
         if (prevQuoteIndex !== -1) {
           jsonStr = jsonStr.substring(0, prevQuoteIndex);
         }
       }
 
-      // Count and fix unclosed brackets
+      // Close unclosed brackets
       const openBraces = (jsonStr.match(/{/g) || []).length;
       const closeBraces = (jsonStr.match(/}/g) || []).length;
       const openBrackets = (jsonStr.match(/\[/g) || []).length;
       const closeBrackets = (jsonStr.match(/]/g) || []).length;
 
-      // Close unclosed arrays
       for (let i = 0; i < openBrackets - closeBrackets; i++) {
         jsonStr += ']';
       }
-      // Close unclosed objects
       for (let i = 0; i < openBraces - closeBraces; i++) {
         jsonStr += '}';
       }
 
       return JSON.parse(jsonStr);
     } catch (e2) {
-      throw new Error(`Failed to parse JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      // Step 6: Last resort - fix unescaped quotes inside string values
+      try {
+        // Fix unescaped double quotes within JSON string values
+        // Match patterns like: "key": "value with "quotes" inside"
+        // by escaping the inner quotes
+        let repaired = jsonStr;
+
+        // Strategy: walk through and track JSON structure,
+        // escaping any unescaped quotes inside string values
+        repaired = repairJsonStrings(repaired);
+
+        return JSON.parse(repaired);
+      } catch (e3) {
+        throw new Error(`Failed to parse JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
     }
   }
+}
+
+function repairJsonStrings(json: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  let depth = 0; // track nested depth for debugging
+
+  for (let i = 0; i < json.length; i++) {
+    const char = json[i];
+    const next = json[i + 1];
+
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      result += char;
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      if (!inString) {
+        // Opening quote
+        inString = true;
+        result += char;
+      } else {
+        // Closing quote or unescaped quote inside string?
+        // Check if this looks like a closing quote:
+        // After a closing quote, we expect: , ] } : or whitespace then , ] } :
+        const after = json.substring(i + 1).trimStart();
+        if (after.length === 0 || /^[,:\}\]]/.test(after)) {
+          // This is a real closing quote
+          inString = false;
+          result += char;
+        } else {
+          // This is an unescaped quote inside a string - escape it
+          result += '\\"';
+        }
+      }
+      continue;
+    }
+
+    result += char;
+  }
+
+  return result;
 }
