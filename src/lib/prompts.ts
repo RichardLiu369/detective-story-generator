@@ -104,6 +104,25 @@ Output strictly in the following JSON format:
 
 Now create a completely new detective mystery story:`;
 
+export function buildThemeInstruction(theme?: string): string {
+  if (theme) {
+    return `## Theme Requirement (IMPORTANT)
+
+The story MUST be based on the theme: **${theme}**
+
+This means:
+- The crime, setting, and plot must revolve around this theme
+- Clues and evidence must be directly related to this theme
+- The murder method or motive should connect to this theme
+- The story title should reflect this theme
+
+Do NOT ignore this theme. The theme is the core of the story.`;
+  }
+  return `## Theme
+
+Choose a unique, creative theme yourself. Avoid common or overused detective story setups.`;
+}
+
 export const STORY_REFINEMENT_PROMPT = `Please check the logical rigor of the following detective story and make necessary corrections:
 
 {story}

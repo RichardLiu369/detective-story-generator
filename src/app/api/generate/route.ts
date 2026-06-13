@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StoryConfig, GenerateResponse } from '@/types';
 import { callAI, extractJSONFromResponse } from '@/lib/ai-client';
-import { STORY_GENERATION_PROMPT } from '@/lib/prompts';
+import { STORY_GENERATION_PROMPT, buildThemeInstruction } from '@/lib/prompts';
 
 export async function POST(request: NextRequest): Promise<NextResponse<GenerateResponse>> {
   try {
@@ -30,11 +30,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<GenerateR
     const baseUrl = headerBaseUrl || undefined;
     const modelId = headerModelId || undefined;
 
-    // Generate story
+    // Generate story with theme instruction
+    const themeInstruction = buildThemeInstruction(config.theme);
+    const fullPrompt = STORY_GENERATION_PROMPT + '\n\n' + themeInstruction;
+
     const messages = [
       {
         role: 'user' as const,
-        content: STORY_GENERATION_PROMPT,
+        content: fullPrompt,
       },
     ];
 
